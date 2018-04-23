@@ -2,6 +2,6 @@
     package="com.awareframework.android.sensor.battery">
 
     <application>
-
+        <service android:name=".BatterySensor" android:exported="true"/>
     </application>
 </manifest>
