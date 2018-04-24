@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.Intent.*
 import android.content.IntentFilter
+import android.os.Binder
 import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
@@ -24,7 +25,7 @@ import com.awareframework.android.core.db.Engine
  * @author  sercant
  * @date 23/04/2018
  */
-class BatterySensor : AwareSensor() {
+class BatterySensor internal constructor() : AwareSensor() {
 
     companion object {
         /**
@@ -93,8 +94,9 @@ class BatterySensor : AwareSensor() {
         const val STATUS_PHONE_BOOTED = -3
 
         val CONFIG = Battery.BatteryConfig()
-    }
 
+        var instance: BatterySensor? = null
+    }
 
     /**
      * BroadcastReceiver for Battery module
@@ -146,7 +148,7 @@ class BatterySensor : AwareSensor() {
 
         registerReceiver(batteryBroadcastReceiver, filter)
 
-        if (CONFIG.debug) Log.d(TAG, "Battery service created!")
+        logd("Battery service created!")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -154,7 +156,7 @@ class BatterySensor : AwareSensor() {
 
         // TODO (sercant): check permissions
 
-        if (CONFIG.debug) Log.d(TAG, "Battery service active...")
+        Log.d(TAG, "Battery service active...")
 
         return START_STICKY
     }
@@ -167,12 +169,21 @@ class BatterySensor : AwareSensor() {
         dbEngine?.close()
         dbEngine = null
 
-        if (CONFIG.debug) Log.d(TAG, "Battery service terminated...")
+        instance = null
+
+        logd("Battery service terminated...")
     }
 
-    override fun onBind(p0: Intent?): IBinder? {
-        // TODO (sercant): bind service
-        return null
+    inner class BatteryServiceBinder : Binder() {
+        fun getService(): BatterySensor {
+            return instance ?: BatterySensor()
+        }
+    }
+
+    private val binder: BatteryServiceBinder = BatteryServiceBinder()
+
+    override fun onBind(p0: Intent?): IBinder {
+        return binder
     }
 
     override fun onSync(intent: Intent?) {
@@ -201,5 +212,17 @@ class BatterySensor : AwareSensor() {
 
     private fun onReboot() {
         // TODO (sercant): implement logic
+    }
+
+    private fun logd(text: String) {
+        if (CONFIG.debug) Log.d(TAG, text)
+    }
+
+    private fun logw(text: String) {
+        Log.w(TAG, text)
+    }
+
+    private fun loge(text: String) {
+        Log.e(TAG, text)
     }
 }

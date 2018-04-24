@@ -1,7 +1,10 @@
 package com.awareframework.android.sensor.battery
 
+import android.content.Context
+import android.content.Intent
 import com.awareframework.android.core.model.ISensorController
 import com.awareframework.android.core.model.SensorConfig
+
 
 /**
  * Battery controller class
@@ -9,33 +12,37 @@ import com.awareframework.android.core.model.SensorConfig
  * @author  sercant
  * @date 23/04/2018
  */
-class Battery : ISensorController {
+class Battery private constructor(private val context: Context) : ISensorController {
 
     // TODO (sercant): change to data class when it has fields
     class BatteryConfig : SensorConfig(dbPath = "aware_battery")
 
+    class Builder(private val context: Context) {
+        val config: BatteryConfig = BatterySensor.CONFIG
+
+        fun build(): Battery = Battery(context)
+    }
+
     override fun disable() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        BatterySensor.CONFIG.enabled = false
     }
 
     override fun enable() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        BatterySensor.CONFIG.enabled = true
     }
 
-    override fun isEnabled(): Boolean {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
+    override fun isEnabled(): Boolean = BatterySensor.CONFIG.enabled
 
     override fun start() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        context.startService(Intent(context, BatterySensor::class.java))
     }
 
     override fun stop() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        context.stopService(Intent(context, BatterySensor::class.java))
     }
 
     override fun sync(force: Boolean) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        BatterySensor.instance?.onSync(null)
     }
 
 }
