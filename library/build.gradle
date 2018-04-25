@@ -7,7 +7,10 @@ apply plugin: 'kotlin-android-extensions'
 apply plugin: 'com.github.dcendents.android-maven'
 
 dependencies {
-    api 'com.github.awareframework:com.aware.android.core:0.1.1'
+    api 'com.github.awareframework:com.aware.android.core:master-SNAPSHOT'
+
+    // Gson
+    implementation "com.google.code.gson:gson:$gson"
 
     // Support Dependencies
     implementation "com.android.support:appcompat-v7:$support_libs"

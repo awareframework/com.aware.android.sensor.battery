@@ -5,12 +5,15 @@ import android.content.Context
 import android.content.Intent
 import android.content.Intent.*
 import android.content.IntentFilter
+import android.os.BatteryManager
 import android.os.Binder
 import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
 import com.awareframework.android.core.AwareSensor
 import com.awareframework.android.core.db.Engine
+import com.awareframework.android.sensor.battery.model.BatteryData
+import java.util.*
 
 /**
  * Service that logs power related events (battery and shutdown/reboot)
@@ -191,7 +194,55 @@ class BatterySensor internal constructor() : AwareSensor() {
     }
 
     private fun onBatteryChanged(extras: Bundle) {
-        // TODO (sercant): implement logic
+        val lastBattery = dbEngine?.getLatest(BatteryData.TABLE_NAME)
+
+        val changed = if (lastBattery != null) {
+            val data = BatteryData.fromJson(lastBattery.data)
+
+            // this next line is the return of the scope lol
+            extras.getInt(BatteryManager.EXTRA_LEVEL) != data.level ||
+                    extras.getInt(BatteryManager.EXTRA_PLUGGED) != data.adaptor ||
+                    extras.getInt(BatteryManager.EXTRA_STATUS) != data.status
+        } else true
+
+        if (!changed) return
+
+        val newData = BatteryData().apply {
+            timestamp = System.currentTimeMillis()
+            timezone = TimeZone.getDefault().rawOffset
+            deviceId = CONFIG.deviceId
+            label = CONFIG.label
+            status = extras.getInt(BatteryManager.EXTRA_STATUS)
+            level = extras.getInt(BatteryManager.EXTRA_LEVEL)
+            scale = extras.getInt(BatteryManager.EXTRA_SCALE)
+            voltage = extras.getInt(BatteryManager.EXTRA_VOLTAGE)
+            temperature = extras.getInt(BatteryManager.EXTRA_TEMPERATURE) / 10
+            adaptor = extras.getInt(BatteryManager.EXTRA_PLUGGED)
+            health = extras.getInt(BatteryManager.EXTRA_HEALTH)
+            technology = extras.getString(BatteryManager.EXTRA_TECHNOLOGY)
+        }
+
+        dbEngine?.save(newData, BatteryData.TABLE_NAME)
+        CONFIG.batteryListener?.onBatteryChanged(newData)
+
+
+        if (newData.adaptor == BatteryManager.BATTERY_PLUGGED_AC) {
+            logd(ACTION_AWARE_BATTERY_CHARGING_AC)
+            applicationContext.sendBroadcast(Intent(ACTION_AWARE_BATTERY_CHARGING_AC))
+        }
+
+        if (newData.adaptor == BatteryManager.BATTERY_PLUGGED_USB) {
+            logd(ACTION_AWARE_BATTERY_CHARGING_USB)
+            applicationContext.sendBroadcast(Intent(ACTION_AWARE_BATTERY_CHARGING_USB))
+        }
+
+        if (newData.status == BatteryManager.BATTERY_STATUS_FULL) {
+            logd(ACTION_AWARE_BATTERY_FULL)
+            applicationContext.sendBroadcast(Intent(ACTION_AWARE_BATTERY_FULL))
+        }
+
+        logd(ACTION_AWARE_BATTERY_CHANGED)
+        applicationContext.sendBroadcast(Intent(ACTION_AWARE_BATTERY_CHANGED))
     }
 
     private fun onPowerConnected() {
@@ -203,7 +254,9 @@ class BatterySensor internal constructor() : AwareSensor() {
     }
 
     private fun onBatteryLow() {
-        // TODO (sercant): implement logic
+        logd(ACTION_AWARE_BATTERY_LOW)
+
+        applicationContext.sendBroadcast(Intent(ACTION_AWARE_BATTERY_LOW))
     }
 
     private fun onShutDown() {

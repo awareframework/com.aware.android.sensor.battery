@@ -15,7 +15,9 @@ import com.awareframework.android.core.model.SensorConfig
 class Battery private constructor(private val context: Context) : ISensorController {
 
     // TODO (sercant): change to data class when it has fields
-    class BatteryConfig : SensorConfig(dbPath = "aware_battery")
+    class BatteryConfig(
+            var batteryListener: BatteryListener? = null
+    ) : SensorConfig(dbPath = "aware_battery")
 
     class Builder(private val context: Context) {
         val config: BatteryConfig = BatterySensor.CONFIG
