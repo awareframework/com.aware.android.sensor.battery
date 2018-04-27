@@ -12,7 +12,9 @@ import android.os.IBinder
 import android.util.Log
 import com.awareframework.android.core.AwareSensor
 import com.awareframework.android.core.db.Engine
+import com.awareframework.android.sensor.battery.model.BatteryCharge
 import com.awareframework.android.sensor.battery.model.BatteryData
+import com.awareframework.android.sensor.battery.model.BatteryDischarge
 import java.util.*
 
 /**
@@ -196,14 +198,12 @@ class BatterySensor internal constructor() : AwareSensor() {
     private fun onBatteryChanged(extras: Bundle) {
         val lastBattery = dbEngine?.getLatest(BatteryData.TABLE_NAME)
 
-        val changed = if (lastBattery != null) {
-            val data = BatteryData.fromJson(lastBattery.data)
-
-            // this next line is the return of the scope lol
-            extras.getInt(BatteryManager.EXTRA_LEVEL) != data.level ||
+        var changed = true
+        lastBattery?.withData<BatteryData> { data ->
+            changed = extras.getInt(BatteryManager.EXTRA_LEVEL) != data.level ||
                     extras.getInt(BatteryManager.EXTRA_PLUGGED) != data.adaptor ||
                     extras.getInt(BatteryManager.EXTRA_STATUS) != data.status
-        } else true
+        }
 
         if (!changed) return
 
@@ -246,7 +246,33 @@ class BatterySensor internal constructor() : AwareSensor() {
     }
 
     private fun onPowerConnected() {
-        // TODO (sercant): implement logic
+        val lastBattery = dbEngine?.getLatest(BatteryData.TABLE_NAME)
+        val lastDischarge = dbEngine?.getLatest(BatteryDischarge.TABLE_NAME)
+
+        lastBattery?.withData<BatteryData> { batteryData ->
+            if (lastDischarge != null) {
+                lastDischarge.alterData<BatteryDischarge> {
+                    if (it.endTimestamp == 0L) {
+                        it.end = batteryData.level
+                        it.endTimestamp = System.currentTimeMillis()
+                    }
+                }
+                dbEngine?.update(lastDischarge)
+            }
+
+            val batteryCharge = BatteryCharge().apply {
+                timestamp = System.currentTimeMillis()
+                deviceId = CONFIG.deviceId
+                start = batteryData.level
+            }
+
+            dbEngine?.save(batteryCharge, BatteryCharge.TABLE_NAME)
+        }
+
+        logd(ACTION_AWARE_BATTERY_CHARGING)
+        applicationContext.sendBroadcast(Intent(ACTION_AWARE_BATTERY_CHARGING))
+
+        CONFIG.batteryListener?.onBatteryCharging()
     }
 
     private fun onPowerDisconnected() {
