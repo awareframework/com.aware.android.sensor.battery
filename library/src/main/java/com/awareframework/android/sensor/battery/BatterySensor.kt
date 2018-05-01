@@ -96,7 +96,7 @@ class BatterySensor internal constructor() : AwareSensor() {
         /**
          * [Battery_Data.STATUS] Phone finished booting
          */
-        const val STATUS_PHONE_BOOTED = -3
+        const val STATUS_PHONE_BOOTED = -3 // TODO
 
         val CONFIG = Battery.BatteryConfig()
 
@@ -161,7 +161,7 @@ class BatterySensor internal constructor() : AwareSensor() {
 
         // TODO (sercant): check permissions
 
-        Log.d(TAG, "Battery service active...")
+        logd("Battery service active...")
 
         return START_STICKY
     }
@@ -312,11 +312,55 @@ class BatterySensor internal constructor() : AwareSensor() {
     }
 
     private fun onShutDown() {
-        // TODO (sercant): implement logic
+        val lastBattery = dbEngine?.getLatest(BatteryData.TABLE_NAME)
+        lastBattery?.withData<BatteryData> { batteryData ->
+            val newData = BatteryData().apply {
+                timestamp = System.currentTimeMillis()
+                timezone = TimeZone.getDefault().rawOffset
+                deviceId = CONFIG.deviceId
+                label = CONFIG.label
+                status = STATUS_PHONE_SHUTDOWN
+                level = batteryData.level
+                scale = batteryData.scale
+                voltage = batteryData.voltage
+                temperature = batteryData.temperature
+                adaptor = batteryData.adaptor
+                health = batteryData.health
+                technology = batteryData.technology
+            }
+
+            dbEngine?.save(newData, BatteryData.TABLE_NAME)
+        }
+
+        logd(ACTION_AWARE_PHONE_SHUTDOWN)
+        applicationContext.sendBroadcast(Intent(ACTION_AWARE_PHONE_SHUTDOWN))
+        CONFIG.batteryListener?.onPhoneShutdown()
     }
 
     private fun onReboot() {
-        // TODO (sercant): implement logic
+        val lastBattery = dbEngine?.getLatest(BatteryData.TABLE_NAME)
+        lastBattery?.withData<BatteryData> { batteryData ->
+            val newData = BatteryData().apply {
+                timestamp = System.currentTimeMillis()
+                timezone = TimeZone.getDefault().rawOffset
+                deviceId = CONFIG.deviceId
+                label = CONFIG.label
+                status = STATUS_PHONE_REBOOT
+                level = batteryData.level
+                scale = batteryData.scale
+                voltage = batteryData.voltage
+                temperature = batteryData.temperature
+                adaptor = batteryData.adaptor
+                health = batteryData.health
+                technology = batteryData.technology
+            }
+
+            dbEngine?.save(newData, BatteryData.TABLE_NAME)
+        }
+
+        logd(ACTION_AWARE_PHONE_REBOOT)
+        applicationContext.sendBroadcast(Intent(ACTION_AWARE_PHONE_REBOOT))
+        CONFIG.batteryListener?.onPhoneReboot()
     }
 
     private fun logd(text: String) {
