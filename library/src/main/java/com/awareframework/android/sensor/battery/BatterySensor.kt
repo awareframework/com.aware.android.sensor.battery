@@ -276,7 +276,33 @@ class BatterySensor internal constructor() : AwareSensor() {
     }
 
     private fun onPowerDisconnected() {
-        // TODO (sercant): implement logic
+        val lastBattery = dbEngine?.getLatest(BatteryData.TABLE_NAME)
+        val lastCharge = dbEngine?.getLatest(BatteryCharge.TABLE_NAME)
+
+        lastBattery?.withData<BatteryData> { batteryData ->
+            if (lastCharge != null) {
+                lastCharge.alterData<BatteryDischarge> {
+                    if (it.endTimestamp == 0L) {
+                        it.end = batteryData.level
+                        it.endTimestamp = System.currentTimeMillis()
+                    }
+                }
+                dbEngine?.update(lastCharge)
+            }
+
+            val batteryDischarge = BatteryDischarge().apply {
+                timestamp = System.currentTimeMillis()
+                deviceId = CONFIG.deviceId
+                start = batteryData.level
+            }
+
+            dbEngine?.save(batteryDischarge, BatteryDischarge.TABLE_NAME)
+        }
+
+        logd(ACTION_AWARE_BATTERY_DISCHARGING)
+        applicationContext.sendBroadcast(Intent(ACTION_AWARE_BATTERY_DISCHARGING))
+
+        CONFIG.batteryListener?.onBatteryDischarging()
     }
 
     private fun onBatteryLow() {
