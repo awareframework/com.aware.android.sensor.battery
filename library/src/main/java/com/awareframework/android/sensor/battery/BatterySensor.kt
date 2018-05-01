@@ -309,6 +309,7 @@ class BatterySensor internal constructor() : AwareSensor() {
         logd(ACTION_AWARE_BATTERY_LOW)
 
         applicationContext.sendBroadcast(Intent(ACTION_AWARE_BATTERY_LOW))
+        CONFIG.batteryListener?.onBatteryLow()
     }
 
     private fun onShutDown() {
