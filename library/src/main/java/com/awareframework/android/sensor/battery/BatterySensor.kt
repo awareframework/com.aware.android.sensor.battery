@@ -12,6 +12,7 @@ import android.os.IBinder
 import android.util.Log
 import com.awareframework.android.core.AwareSensor
 import com.awareframework.android.core.db.Engine
+import com.awareframework.android.core.db.model.DbSyncConfig
 import com.awareframework.android.sensor.battery.model.BatteryCharge
 import com.awareframework.android.sensor.battery.model.BatteryData
 import com.awareframework.android.sensor.battery.model.BatteryDischarge
@@ -192,7 +193,10 @@ class BatterySensor internal constructor() : AwareSensor() {
     }
 
     override fun onSync(intent: Intent?) {
-        TODO("not implemented")
+        // TODO (sercant): find out a way to remove the synced data without affecting the functionality
+        dbEngine?.startSync(BatteryData.TABLE_NAME, DbSyncConfig(removeAfterSync = false))
+        dbEngine?.startSync(BatteryCharge.TABLE_NAME, DbSyncConfig(removeAfterSync = false))
+        dbEngine?.startSync(BatteryDischarge.TABLE_NAME, DbSyncConfig(removeAfterSync = false))
     }
 
     private fun onBatteryChanged(extras: Bundle) {
