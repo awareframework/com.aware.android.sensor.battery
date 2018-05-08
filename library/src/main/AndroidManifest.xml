@@ -2,6 +2,20 @@
     package="com.awareframework.android.sensor.battery">
 
     <application>
-        <service android:name=".BatterySensor" android:exported="true"/>
+        <service
+            android:name=".BatterySensor"
+            android:exported="true" />
+        <receiver
+            android:name=".BatterySensor$BatteryBroadcastReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.aware.android.sensor.battery.SENSOR_START" />
+                <action android:name="com.aware.android.sensor.battery.SENSOR_STOP" />
+                <action android:name="com.aware.android.sensor.battery.SET_LABEL" />
+                <action android:name="com.aware.android.sensor.battery.SYNC" />
+                <action android:name="com.aware.android.sensor.SENSOR_START" />
+                <action android:name="com.aware.android.sensor.SENSOR_STOP" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

@@ -13,6 +13,8 @@ import android.util.Log
 import com.awareframework.android.core.AwareSensor
 import com.awareframework.android.core.db.Engine
 import com.awareframework.android.core.db.model.DbSyncConfig
+import com.awareframework.android.sensor.battery.Battery.Companion.ACTION_AWARE_BATTERY_START
+import com.awareframework.android.sensor.battery.Battery.Companion.ACTION_AWARE_BATTERY_STOP
 import com.awareframework.android.sensor.battery.model.BatteryCharge
 import com.awareframework.android.sensor.battery.model.BatteryData
 import com.awareframework.android.sensor.battery.model.BatteryDischarge
@@ -378,5 +380,42 @@ class BatterySensor internal constructor() : AwareSensor() {
 
     private fun loge(text: String) {
         Log.e(TAG, text)
+    }
+
+    class BatteryBroadcastReceiver : AwareSensor.SensorBroadcastReceiver() {
+
+        companion object {
+            private val TAG = "BatteryReceiver"
+        }
+
+        override fun onReceive(context: Context?, intent: Intent?) {
+            context ?: return
+
+            logd("Sensor broadcast received. action: " + intent?.action)
+
+            when (intent?.action) {
+                AwareSensor.SensorBroadcastReceiver.SENSOR_START_ENABLED -> {
+                    logd("Sensor enabled: " + CONFIG.enabled)
+
+                    if (CONFIG.enabled) {
+                        context.startService(Intent(context, BatterySensor::class.java))
+                    }
+                }
+
+                ACTION_AWARE_BATTERY_STOP,
+                AwareSensor.SensorBroadcastReceiver.SENSOR_STOP_ALL -> {
+                    logd("Stopping sensor.")
+                    context.stopService(Intent(context, BatterySensor::class.java))
+                }
+
+                ACTION_AWARE_BATTERY_START -> {
+                    context.startService(Intent(context, BatterySensor::class.java))
+                }
+            }
+        }
+
+        private fun logd(text: String) {
+            if (CONFIG.debug) Log.d(TAG, text)
+        }
     }
 }

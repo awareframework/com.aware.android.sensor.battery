@@ -14,6 +14,27 @@ import com.awareframework.android.core.model.SensorConfig
  */
 class Battery private constructor(private val context: Context) : ISensorController {
 
+    companion object {
+        /**
+         * Starts the sensor.
+         */
+        const val ACTION_AWARE_BATTERY_START = "com.aware.android.sensor.battery.SENSOR_START"
+
+        /**
+         * Stops the sensor.
+         */
+        const val ACTION_AWARE_BATTERY_STOP = "com.aware.android.sensor.battery.SENSOR_STOP"
+
+        /**
+         * Changes the label of the data.
+         */
+        const val ACTION_AWARE_BATTERY_LABEL = "com.aware.android.sensor.battery.SET_LABEL"
+
+        const val ACTION_AWARE_BATTERY_SYNC = "com.aware.android.sensor.battery.SYNC"
+        const val ACTION_AWARE_BATTERY_SYNC_SENT = "com.aware.android.sensor.battery.SYNC_SENT"
+
+        const val EXTRA_AWARE_BATTERY_LABEL = "label"
+    }
     // TODO (sercant): change to data class when it has fields
     class BatteryConfig(
             var batteryListener: BatteryListener? = null
