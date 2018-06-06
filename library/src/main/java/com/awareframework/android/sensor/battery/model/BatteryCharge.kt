@@ -4,7 +4,7 @@ import com.awareframework.android.core.model.AwareObject
 import com.google.gson.Gson
 
 /**
- * Class decription
+ * Battery charge data
  *
  * @author  sercant
  * @date 25/04/2018

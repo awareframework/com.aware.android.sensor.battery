@@ -2,7 +2,7 @@ package com.awareframework.android.sensor.battery
 
 import com.awareframework.android.sensor.battery.model.BatteryData
 
-interface BatteryListener {
+interface BatteryObserver {
     fun onBatteryChanged(data: BatteryData)
     fun onPhoneReboot()
     fun onPhoneShutdown()
