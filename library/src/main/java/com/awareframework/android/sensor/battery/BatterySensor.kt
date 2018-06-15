@@ -154,9 +154,9 @@ class BatterySensor internal constructor() : AwareSensor() {
 
     override fun onSync(intent: Intent?) {
         // TODO (sercant): find out a way to remove the synced data without affecting the functionality
-        dbEngine?.startSync(BatteryData.TABLE_NAME, DbSyncConfig(removeAfterSync = false))
-        dbEngine?.startSync(BatteryCharge.TABLE_NAME, DbSyncConfig(removeAfterSync = false))
-        dbEngine?.startSync(BatteryDischarge.TABLE_NAME, DbSyncConfig(removeAfterSync = false))
+        dbEngine?.startSync(BatteryData.TABLE_NAME, DbSyncConfig(keepLastData = true))
+        dbEngine?.startSync(BatteryCharge.TABLE_NAME)
+        dbEngine?.startSync(BatteryDischarge.TABLE_NAME)
     }
 
     private fun onBatteryChanged(extras: Bundle) {
