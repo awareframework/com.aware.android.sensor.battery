@@ -10,10 +10,10 @@ import com.google.gson.Gson
  * @date 25/04/2018
  */
 class BatteryDischarge(
-        var start: Int = 0,
-        var end: Int = 0,
-        var endTimestamp: Long = 0L
-) : AwareObject(jsonVersion = 1) {
+//        var start: Int = 0,
+//        var end: Int = 0,
+//        var endTimestamp: Long = 0L
+) : AwareObject(jsonVersion = 2) {
 
     companion object {
         const val TABLE_NAME = "batteryDischarge"

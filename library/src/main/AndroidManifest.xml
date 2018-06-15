@@ -6,7 +6,7 @@
             android:name=".BatterySensor"
             android:exported="true" />
         <receiver
-            android:name=".BatterySensor$BatteryBroadcastReceiver"
+            android:name=".BatterySensor$BatterySensorBroadcastReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="com.aware.android.sensor.battery.SENSOR_START" />
