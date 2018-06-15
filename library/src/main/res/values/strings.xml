@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="aware_battery_enabled_summary">Turns battery data collection on/off</string>
+    <string name="aware_battery_enabled">aware_battery_enabled</string>
+    <string name="aware_battery_enabled_title">Enabled</string>
+</resources>
