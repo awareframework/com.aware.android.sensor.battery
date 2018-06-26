@@ -9,9 +9,11 @@ import android.support.v4.app.NotificationCompat
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
 import com.awareframework.android.core.db.Engine
+import com.awareframework.android.core.manager.DbSyncManager
 import com.awareframework.android.sensor.battery.Battery
 import com.awareframework.android.sensor.battery.BatteryObserver
 import com.awareframework.android.sensor.battery.model.BatteryData
+import java.util.*
 
 
 class MainActivity : AppCompatActivity() {
@@ -19,9 +21,12 @@ class MainActivity : AppCompatActivity() {
     companion object {
         const val CHANNEL_ID = "com.awareframework.android.sensor.example"
         const val GROUP_ID = "sensor logs"
+        const val DEVICE_ID = "device_id"
     }
 
     private lateinit var battery: Battery
+    private lateinit var syncManager: DbSyncManager
+
     private var notificationId: Int = 0
 
     private val sensorObserver: BatteryObserver = object : BatteryObserver {
@@ -59,9 +64,21 @@ class MainActivity : AppCompatActivity() {
             setDebug(true)
             setSensorObserver(sensorObserver)
             setDatabaseType(Engine.DatabaseType.ROOM)
+            setDatabaseHost("http://10.0.2.2:3000/insert")
+            setDeviceId(getDeviceId())
+        }.build()
+
+        syncManager = DbSyncManager.Builder(this).run {
+            setBatteryChargingOnly(false)
+            setDebug(true)
+            setWifiOnly(false)
+            setSyncInterval(0.5f)
         }.build()
 
         battery.start()
+
+        syncManager.start()
+
     }
 
     fun logd(text: String) {
@@ -98,5 +115,16 @@ class MainActivity : AppCompatActivity() {
         } else {
             ""
         }
+    }
+
+    private fun getDeviceId(): String {
+        return getPreferences(Context.MODE_PRIVATE).getString(DEVICE_ID, makeDeviceId())
+    }
+
+    private fun makeDeviceId(): String {
+        val deviceId = UUID.randomUUID().toString()
+        getPreferences(Context.MODE_PRIVATE).edit().putString(DEVICE_ID, deviceId).apply()
+
+        return deviceId
     }
 }
