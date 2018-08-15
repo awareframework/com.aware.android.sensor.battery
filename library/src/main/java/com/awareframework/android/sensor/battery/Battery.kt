@@ -100,7 +100,7 @@ class Battery private constructor(private val context: Context) : ISensorControl
     }
 
     data class BatteryConfig(
-            var batteryObserver: BatteryObserver? = null
+            var sensorObserver: BatterySensor.SensorObserver? = null
     ) : SensorConfig(dbPath = "aware_battery")
 
     class Builder(private val context: Context) {
@@ -139,7 +139,7 @@ class Battery private constructor(private val context: Context) : ISensorControl
         /**
          * @param observer will get the instant events that are collected by the sensor.
          */
-        fun setSensorObserver(observer: BatteryObserver) = apply { config.batteryObserver = observer }
+        fun setSensorObserver(observer: BatterySensor.SensorObserver) = apply { config.sensorObserver = observer }
 
         /**
          * @param deviceId id of the device that will be associated with the events and the sensor. (default = "")

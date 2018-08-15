@@ -25,7 +25,7 @@ class BatteryTest {
         val battery = Battery.Builder(appContext)
                 .setDebug(true)
                 .setDatabaseType(Engine.DatabaseType.ROOM)
-                .setSensorObserver(object : BatteryObserver {
+                .setSensorObserver(object : BatterySensor.SensorObserver {
                     override fun onBatteryChanged(data: BatteryData) {
                         // your code here.
                     }
