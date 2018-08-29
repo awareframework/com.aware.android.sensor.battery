@@ -11,29 +11,12 @@ import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
 import com.awareframework.android.core.AwareSensor
-import com.awareframework.android.core.db.Engine
 import com.awareframework.android.core.db.model.DbSyncConfig
 import com.awareframework.android.core.model.AwareData
-import com.awareframework.android.sensor.battery.Battery.Companion.ACTION_AWARE_BATTERY_CHANGED
-import com.awareframework.android.sensor.battery.Battery.Companion.ACTION_AWARE_BATTERY_CHARGING
-import com.awareframework.android.sensor.battery.Battery.Companion.ACTION_AWARE_BATTERY_CHARGING_AC
-import com.awareframework.android.sensor.battery.Battery.Companion.ACTION_AWARE_BATTERY_CHARGING_USB
-import com.awareframework.android.sensor.battery.Battery.Companion.ACTION_AWARE_BATTERY_DISCHARGING
-import com.awareframework.android.sensor.battery.Battery.Companion.ACTION_AWARE_BATTERY_FULL
-import com.awareframework.android.sensor.battery.Battery.Companion.ACTION_AWARE_BATTERY_LABEL
-import com.awareframework.android.sensor.battery.Battery.Companion.ACTION_AWARE_BATTERY_LOW
-import com.awareframework.android.sensor.battery.Battery.Companion.ACTION_AWARE_BATTERY_START
-import com.awareframework.android.sensor.battery.Battery.Companion.ACTION_AWARE_BATTERY_STOP
-import com.awareframework.android.sensor.battery.Battery.Companion.ACTION_AWARE_BATTERY_SYNC
-import com.awareframework.android.sensor.battery.Battery.Companion.ACTION_AWARE_PHONE_REBOOT
-import com.awareframework.android.sensor.battery.Battery.Companion.ACTION_AWARE_PHONE_SHUTDOWN
-import com.awareframework.android.sensor.battery.Battery.Companion.EXTRA_AWARE_BATTERY_LABEL
-import com.awareframework.android.sensor.battery.Battery.Companion.STATUS_PHONE_REBOOT
-import com.awareframework.android.sensor.battery.Battery.Companion.STATUS_PHONE_SHUTDOWN
+import com.awareframework.android.core.model.SensorConfig
 import com.awareframework.android.sensor.battery.model.BatteryCharge
 import com.awareframework.android.sensor.battery.model.BatteryData
 import com.awareframework.android.sensor.battery.model.BatteryDischarge
-import java.util.*
 
 /**
  * Service that logs power related events (battery and shutdown/reboot)
@@ -48,26 +31,95 @@ import java.util.*
  * @author  sercant
  * @date 23/04/2018
  */
-class BatterySensor internal constructor() : AwareSensor() {
+class BatterySensor : AwareSensor() {
 
     companion object {
+        const val TAG = "AWARE::Battery"
+
+
+        // Sensor actions
+
         /**
-         * Logging tag "BatterySensor"
+         * Broadcasted event: the battery values just changed
          */
-        const val TAG = "BatterySensor"
+        const val ACTION_AWARE_BATTERY_CHANGED = "ACTION_AWARE_BATTERY_CHANGED"
 
-        val CONFIG = Battery.BatteryConfig()
+        /**
+         * Broadcasted event: the user just started charging
+         */
+        const val ACTION_AWARE_BATTERY_CHARGING = "ACTION_AWARE_BATTERY_CHARGING"
 
-        var instance: BatterySensor? = null
-    }
+        /**
+         * Broadcasted event: battery charging over power supply (AC)
+         */
+        const val ACTION_AWARE_BATTERY_CHARGING_AC = "ACTION_AWARE_BATTERY_CHARGING_AC"
 
-    private val batteryFilterIntentFilter = IntentFilter().apply {
-        addAction(Intent.ACTION_BATTERY_CHANGED)
-        addAction(Intent.ACTION_BATTERY_LOW)
-        addAction(Intent.ACTION_SHUTDOWN)
-        addAction(Intent.ACTION_REBOOT)
-        addAction(Intent.ACTION_POWER_CONNECTED)
-        addAction(Intent.ACTION_POWER_DISCONNECTED)
+        /**
+         * Broadcasted event: battery charging over USB
+         */
+        const val ACTION_AWARE_BATTERY_CHARGING_USB = "ACTION_AWARE_BATTERY_CHARGING_USB"
+
+        /**
+         * Broadcasted event: the user just stopped charging and is running on battery
+         */
+        const val ACTION_AWARE_BATTERY_DISCHARGING = "ACTION_AWARE_BATTERY_DISCHARGING"
+
+        /**
+         * Broadcasted event: the battery is fully charged
+         */
+        const val ACTION_AWARE_BATTERY_FULL = "ACTION_AWARE_BATTERY_FULL"
+
+        /**
+         * Broadcasted event: the battery is running low and should be charged ASAP
+         */
+        const val ACTION_AWARE_BATTERY_LOW = "ACTION_AWARE_BATTERY_LOW"
+
+        /**
+         * Broadcasted event: the phone is about to be shutdown.
+         */
+        const val ACTION_AWARE_PHONE_SHUTDOWN = "ACTION_AWARE_PHONE_SHUTDOWN"
+
+        /**
+         * Broadcasted event: the phone is about to be rebooted.
+         */
+        const val ACTION_AWARE_PHONE_REBOOT = "ACTION_AWARE_PHONE_REBOOT"
+
+        /**
+         * [BatteryData.status] Phone shutdown
+         */
+        const val STATUS_PHONE_SHUTDOWN = -1
+
+        /**
+         * [BatteryData.status] Phone rebooted
+         */
+        const val STATUS_PHONE_REBOOT = -2
+
+        /**
+         * [BatteryData.status] Phone finished booting
+         */
+        const val STATUS_PHONE_BOOTED = -3 // TODO
+
+        const val ACTION_AWARE_BATTERY_START = "com.awareframework.android.sensor.battery.SENSOR_START"
+        const val ACTION_AWARE_BATTERY_STOP = "com.awareframework.android.sensor.battery.SENSOR_STOP"
+
+        const val ACTION_AWARE_BATTERY_SET_LABEL = "com.awareframework.android.sensor.battery.ACTION_AWARE_BATTERY_SET_LABEL"
+        const val EXTRA_LABEL = "label"
+
+        const val ACTION_AWARE_BATTERY_SYNC = "com.awareframework.android.sensor.battery.SENSOR_SYNC"
+
+        val CONFIG = Config()
+
+        fun start(context: Context, config: Config? = null) {
+            if (config != null)
+                CONFIG.replaceWith(config)
+            context.startService(Intent(context, BatterySensor::class.java))
+        }
+
+        fun stop(context: Context) {
+            context.stopService(Intent(context, BatterySensor::class.java))
+        }
+
+        private var instance: BatterySensor? = null
     }
 
     /**
@@ -82,7 +134,7 @@ class BatterySensor internal constructor() : AwareSensor() {
      * - ACTION_SHUTDOWN: phone is about to shut down
      * - ACTION_REBOOT: phone is about to reboot
      */
-    private val batteryBroadcastReceiver = object : BroadcastReceiver() {
+    private val batteryMonitor = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.action) {
                 ACTION_BATTERY_CHANGED -> {
@@ -99,23 +151,41 @@ class BatterySensor internal constructor() : AwareSensor() {
         }
     }
 
+    private val batteryReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            intent ?: return
+            when (intent.action) {
+                ACTION_AWARE_BATTERY_SET_LABEL -> {
+                    intent.getStringExtra(EXTRA_LABEL)?.let {
+                        CONFIG.label = it
+                    }
+                }
+
+                ACTION_AWARE_BATTERY_SYNC -> onSync(intent)
+            }
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
 
-        dbEngine = Engine.Builder(applicationContext)
-                .setType(CONFIG.dbType)
-                .setPath(CONFIG.dbPath)
-                .setHost(CONFIG.dbHost)
-                .setEncryptionKey(CONFIG.dbEncryptionKey)
-                .build()
+        initializeDbEngine(CONFIG)
 
-        registerReceiver(batteryBroadcastReceiver, batteryFilterIntentFilter)
-        registerReceiver(batterySpecificBroadcastReceiver, IntentFilter().apply {
-            addAction(ACTION_AWARE_BATTERY_SYNC)
-            addAction(ACTION_AWARE_BATTERY_LABEL)
+        registerReceiver(batteryMonitor, IntentFilter().apply {
+            addAction(Intent.ACTION_BATTERY_CHANGED)
+            addAction(Intent.ACTION_BATTERY_LOW)
+            addAction(Intent.ACTION_SHUTDOWN)
+            addAction(Intent.ACTION_REBOOT)
+            addAction(Intent.ACTION_POWER_CONNECTED)
+            addAction(Intent.ACTION_POWER_DISCONNECTED)
         })
 
-        logd("Battery service created!")
+        registerReceiver(batteryReceiver, IntentFilter().apply {
+            addAction(ACTION_AWARE_BATTERY_SET_LABEL)
+            addAction(ACTION_AWARE_BATTERY_SYNC)
+        })
+
+        logd("Battery service created.")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -129,13 +199,10 @@ class BatterySensor internal constructor() : AwareSensor() {
     override fun onDestroy() {
         super.onDestroy()
 
-        unregisterReceiver(batteryBroadcastReceiver)
-        unregisterReceiver(batterySpecificBroadcastReceiver)
+        unregisterReceiver(batteryMonitor)
+        unregisterReceiver(batteryReceiver)
 
         dbEngine?.close()
-        dbEngine = null
-
-        instance = null
 
         logd("Battery service terminated...")
     }
@@ -148,15 +215,14 @@ class BatterySensor internal constructor() : AwareSensor() {
 
     private val binder: BatteryServiceBinder = BatteryServiceBinder()
 
-    override fun onBind(p0: Intent?): IBinder {
-        return binder
-    }
-
     override fun onSync(intent: Intent?) {
         dbEngine?.startSync(BatteryData.TABLE_NAME, DbSyncConfig(keepLastData = true))
         dbEngine?.startSync(BatteryCharge.TABLE_NAME)
         dbEngine?.startSync(BatteryDischarge.TABLE_NAME)
     }
+
+    override fun onBind(intent: Intent?): IBinder? = binder
+
 
     private fun onBatteryChanged(extras: Bundle) {
         val callback: (AwareData?) -> Unit = {
@@ -170,7 +236,6 @@ class BatterySensor internal constructor() : AwareSensor() {
             if (changed) {
                 val newData = BatteryData().apply {
                     timestamp = System.currentTimeMillis()
-                    timezone = TimeZone.getDefault().rawOffset
                     deviceId = CONFIG.deviceId
                     label = CONFIG.label
                     status = extras.getInt(BatteryManager.EXTRA_STATUS)
@@ -299,7 +364,6 @@ class BatterySensor internal constructor() : AwareSensor() {
             lastBattery?.withData<BatteryData> { batteryData ->
                 val newData = BatteryData().apply {
                     timestamp = System.currentTimeMillis()
-                    timezone = TimeZone.getDefault().rawOffset
                     deviceId = CONFIG.deviceId
                     label = CONFIG.label
                     status = STATUS_PHONE_SHUTDOWN
@@ -328,7 +392,6 @@ class BatterySensor internal constructor() : AwareSensor() {
             lastBattery?.withData<BatteryData> { batteryData ->
                 val newData = BatteryData().apply {
                     timestamp = System.currentTimeMillis()
-                    timezone = TimeZone.getDefault().rawOffset
                     deviceId = CONFIG.deviceId
                     label = CONFIG.label
                     status = STATUS_PHONE_REBOOT
@@ -353,12 +416,32 @@ class BatterySensor internal constructor() : AwareSensor() {
         CONFIG.sensorObserver?.onPhoneReboot()
     }
 
+    interface Observer {
+        fun onBatteryChanged(data: BatteryData)
+        fun onPhoneReboot()
+        fun onPhoneShutdown()
+        fun onBatteryLow()
+        fun onBatteryCharging()
+        fun onBatteryDischarging()
+    }
+
+    data class Config(
+            /**
+             * For real-time observation of the sensor data collection.
+             */
+            var sensorObserver: Observer? = null
+    ) : SensorConfig(dbPath = "aware_battery") {
+
+        override fun <T : SensorConfig> replaceWith(config: T) {
+            super.replaceWith(config)
+
+            if (config is Config) {
+                sensorObserver = config.sensorObserver
+            }
+        }
+    }
 
     class BatterySensorBroadcastReceiver : AwareSensor.SensorBroadcastReceiver() {
-
-        // companion object {
-        //     private val TAG = "BatteryReceiver"
-        // }
 
         override fun onReceive(context: Context?, intent: Intent?) {
             context ?: return
@@ -366,58 +449,25 @@ class BatterySensor internal constructor() : AwareSensor() {
             logd("Sensor broadcast received. action: " + intent?.action)
 
             when (intent?.action) {
-                AwareSensor.SensorBroadcastReceiver.SENSOR_START_ENABLED -> {
+                SENSOR_START_ENABLED -> {
                     logd("Sensor enabled: " + CONFIG.enabled)
 
                     if (CONFIG.enabled) {
-                        context.startService(Intent(context, BatterySensor::class.java))
+                        start(context)
                     }
                 }
 
                 ACTION_AWARE_BATTERY_STOP,
-                AwareSensor.SensorBroadcastReceiver.SENSOR_STOP_ALL -> {
+                SENSOR_STOP_ALL -> {
                     logd("Stopping sensor.")
-                    context.stopService(Intent(context, BatterySensor::class.java))
+                    stop(context)
                 }
 
                 ACTION_AWARE_BATTERY_START -> {
-                    context.startService(Intent(context, BatterySensor::class.java))
+                    start(context)
                 }
             }
         }
-    }
-
-    private val batterySpecificBroadcastReceiver: BroadcastReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            intent ?: return
-
-            logd("Sensor broadcast received. action: " + intent.action)
-
-            instance?.run {
-                when (intent.action) {
-                    ACTION_AWARE_BATTERY_LABEL -> {
-                        intent.getStringExtra(EXTRA_AWARE_BATTERY_LABEL)?.let {
-                            CONFIG.label = it
-                        }
-                    }
-
-                    ACTION_AWARE_BATTERY_SYNC -> {
-                        onSync(intent)
-                    }
-                }
-
-                this
-            }
-        }
-    }
-
-    interface SensorObserver {
-        fun onBatteryChanged(data: BatteryData)
-        fun onPhoneReboot()
-        fun onPhoneShutdown()
-        fun onBatteryLow()
-        fun onBatteryCharging()
-        fun onBatteryDischarging()
     }
 }
 
@@ -427,8 +477,4 @@ private fun logd(text: String) {
 
 private fun logw(text: String) {
     Log.w(BatterySensor.TAG, text)
-}
-
-private fun loge(text: String) {
-    Log.e(BatterySensor.TAG, text)
 }

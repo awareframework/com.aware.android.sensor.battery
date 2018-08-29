@@ -27,4 +27,6 @@ class BatteryData(
             return Gson().fromJson(json, BatteryData::class.java)
         }
     }
+
+    override fun toString(): String = toJson()
 }
